@@ -281,3 +281,49 @@ func TestDumpNilInterface(t *testing.T) {
 		t.Errorf("expected <nil> in output, got: %s", result)
 	}
 }
+
+func TestOmitNilPointers(t *testing.T) {
+	type S struct {
+		A *int
+		B int
+	}
+	cs := ConfigState{Indent: " ", OmitNilPointers: true}
+	result := cs.Sdump(S{A: nil, B: 42})
+	if strings.Contains(result, "A:") {
+		t.Errorf("expected nil pointer field A to be omitted, got: %s", result)
+	}
+	if !strings.Contains(result, "B:") {
+		t.Errorf("expected field B to be present, got: %s", result)
+	}
+}
+
+func TestOmitUnexported(t *testing.T) {
+	type s struct {
+		Exported   int
+		unexported int
+	}
+	cs := ConfigState{Indent: " ", OmitUnexported: true}
+	result := cs.Sdump(s{Exported: 1, unexported: 2})
+	if strings.Contains(result, "unexported") {
+		t.Errorf("expected unexported field to be omitted, got: %s", result)
+	}
+	if !strings.Contains(result, "Exported:") {
+		t.Errorf("expected Exported field, got: %s", result)
+	}
+}
+
+func TestHexIntegers(t *testing.T) {
+	cs := ConfigState{Indent: " ", HexIntegers: true}
+	result := cs.Sdump(255)
+	if !strings.Contains(result, "0xff") {
+		t.Errorf("expected hex output 0xff, got: %s", result)
+	}
+}
+
+func TestHexUint(t *testing.T) {
+	cs := ConfigState{Indent: " ", HexIntegers: true}
+	result := cs.Sdump(uint(16))
+	if !strings.Contains(result, "0x10") {
+		t.Errorf("expected hex output 0x10, got: %s", result)
+	}
+}

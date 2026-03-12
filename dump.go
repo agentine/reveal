@@ -146,10 +146,18 @@ func (d *dumpState) dumpRawValue(v reflect.Value) {
 		d.write("(bool) " + strconv.FormatBool(v.Bool()))
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		d.write("(" + typeString(t) + ") " + strconv.FormatInt(v.Int(), 10))
+		if d.cs.HexIntegers {
+			d.write("(" + typeString(t) + ") 0x" + strconv.FormatInt(v.Int(), 16))
+		} else {
+			d.write("(" + typeString(t) + ") " + strconv.FormatInt(v.Int(), 10))
+		}
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		d.write("(" + typeString(t) + ") " + strconv.FormatUint(v.Uint(), 10))
+		if d.cs.HexIntegers {
+			d.write("(" + typeString(t) + ") 0x" + strconv.FormatUint(v.Uint(), 16))
+		} else {
+			d.write("(" + typeString(t) + ") " + strconv.FormatUint(v.Uint(), 10))
+		}
 
 	case reflect.Float32, reflect.Float64:
 		d.write("(" + typeString(t) + ") " + strconv.FormatFloat(v.Float(), 'f', -1, int(t.Size())*8))
@@ -280,9 +288,25 @@ func (d *dumpState) dumpStruct(v reflect.Value) {
 	d.depth++
 	d.pushIndent()
 	numFields := v.NumField()
+	printed := 0
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
 		fv := v.Field(i)
+
+		// OmitUnexported: skip unexported fields entirely.
+		if d.cs.OmitUnexported && !field.IsExported() {
+			continue
+		}
+
+		// OmitNilPointers: skip nil pointer fields.
+		if d.cs.OmitNilPointers && fv.Kind() == reflect.Ptr && fv.IsNil() {
+			continue
+		}
+
+		if printed > 0 {
+			d.write(",\n")
+		}
+		printed++
 
 		d.writeIndent()
 		d.write(field.Name + ": ")
@@ -302,10 +326,8 @@ func (d *dumpState) dumpStruct(v reflect.Value) {
 		} else {
 			d.dumpValue(fv)
 		}
-
-		if i < numFields-1 {
-			d.write(",")
-		}
+	}
+	if printed > 0 {
 		d.write("\n")
 	}
 	d.popIndent()

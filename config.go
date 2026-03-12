@@ -4,7 +4,15 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"sync"
 )
+
+// bufPool is a sync.Pool for reusing bytes.Buffer instances to reduce allocations.
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 // ConfigState holds the configuration options for reveal.
 // All go-spew compatible fields are supported, plus additional reveal-only fields.
@@ -45,6 +53,15 @@ type ConfigState struct {
 	// RecoverPanics causes reveal to recover from panics in Stringer/Error methods
 	// and fall back to raw value dumping. Default: true.
 	RecoverPanics bool
+
+	// OmitNilPointers suppresses nil pointer fields in struct output.
+	OmitNilPointers bool
+
+	// OmitUnexported suppresses unexported struct fields from output.
+	OmitUnexported bool
+
+	// HexIntegers formats integer values in hexadecimal.
+	HexIntegers bool
 }
 
 // Config is the active default configuration for reveal.
@@ -63,8 +80,10 @@ func (c *ConfigState) Dump(a ...interface{}) {
 
 // Sdump returns a string with the passed parameters formatted using Dump style.
 func (c *ConfigState) Sdump(a ...interface{}) string {
-	var buf bytes.Buffer
-	c.Fdump(&buf, a...)
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufPool.Put(buf)
+	c.Fdump(buf, a...)
 	return buf.String()
 }
 
