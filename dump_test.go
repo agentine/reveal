@@ -8,14 +8,14 @@ import (
 
 func TestDumpUnexportedFields(t *testing.T) {
 	type secret struct {
-		exported   int
+		Exported   int
 		unexported string
 	}
-	s := secret{exported: 42, unexported: "hidden"}
+	s := secret{Exported: 42, unexported: "hidden"}
 	result := Sdump(s)
 
-	if !strings.Contains(result, "exported:") {
-		t.Errorf("expected exported field in output, got: %s", result)
+	if !strings.Contains(result, "Exported:") {
+		t.Errorf("expected Exported field in output, got: %s", result)
 	}
 	if !strings.Contains(result, "(int) 42") {
 		t.Errorf("expected (int) 42 in output, got: %s", result)

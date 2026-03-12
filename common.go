@@ -8,40 +8,6 @@ import (
 	"sync"
 )
 
-// pointerTracker tracks visited pointers for circular reference detection.
-type pointerTracker struct {
-	seen map[uintptr]bool
-}
-
-func newPointerTracker() *pointerTracker {
-	return &pointerTracker{seen: make(map[uintptr]bool)}
-}
-
-// visit returns true if this pointer has already been visited (circular reference).
-func (pt *pointerTracker) visit(ptr uintptr) bool {
-	if pt.seen[ptr] {
-		return true
-	}
-	pt.seen[ptr] = true
-	return false
-}
-
-// leave removes a pointer from the visited set when leaving a scope.
-func (pt *pointerTracker) leave(ptr uintptr) {
-	delete(pt.seen, ptr)
-}
-
-// isPointerType returns true if the kind is a type that has a pointer address
-// worth tracking for circular reference detection.
-func isPointerType(k reflect.Kind) bool {
-	switch k {
-	case reflect.Ptr, reflect.Map, reflect.Slice:
-		return true
-	default:
-		return false
-	}
-}
-
 // valueLen returns a printable length/cap string for array-like types.
 func valueLen(v reflect.Value) (int, int) {
 	return v.Len(), v.Cap()

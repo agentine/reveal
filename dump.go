@@ -396,32 +396,4 @@ func (d *dumpState) dumpFunc(v reflect.Value) {
 	}
 }
 
-// printableKey returns a simple string representation of a map key for non-SpewKeys mode.
-func printableKey(v reflect.Value) string {
-	switch v.Kind() {
-	case reflect.String:
-		return v.String()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return strconv.FormatInt(v.Int(), 10)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return strconv.FormatUint(v.Uint(), 10)
-	case reflect.Float32, reflect.Float64:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
-	case reflect.Bool:
-		return strconv.FormatBool(v.Bool())
-	default:
-		if v.CanInterface() {
-			return fmt.Sprintf("%v", v.Interface())
-		}
-		return "<complex key>"
-	}
-}
-
-// Ensure indent is valid and consistent.
-func indentString(cs *ConfigState) string {
-	if cs.Indent == "" {
-		return " "
-	}
-	return cs.Indent
-}
 
