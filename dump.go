@@ -202,6 +202,18 @@ func (d *dumpState) dumpRawValue(v reflect.Value) {
 // dumpSliceOrArray formats a slice or array value.
 func (d *dumpState) dumpSliceOrArray(v reflect.Value) {
 	t := v.Type()
+
+	// Track slice pointer for circular reference detection (slices only, not arrays).
+	if v.Kind() == reflect.Slice && v.Len() > 0 {
+		ptr := v.Pointer()
+		if d.seen[ptr] {
+			d.write("(" + typeString(t) + ") <already shown>")
+			return
+		}
+		d.seen[ptr] = true
+		defer func() { delete(d.seen, ptr) }()
+	}
+
 	l, c := valueLen(v)
 
 	header := "(" + typeString(t) + ") (len=" + strconv.Itoa(l)
@@ -236,6 +248,15 @@ func (d *dumpState) dumpMap(v reflect.Value) {
 		d.write("(" + typeString(t) + ") <nil>")
 		return
 	}
+
+	// Track map pointer for circular reference detection.
+	ptr := v.Pointer()
+	if d.seen[ptr] {
+		d.write("(" + typeString(t) + ") <already shown>")
+		return
+	}
+	d.seen[ptr] = true
+	defer func() { delete(d.seen, ptr) }()
 
 	keys := v.MapKeys()
 	if d.cs.SortKeys {
