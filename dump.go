@@ -9,16 +9,32 @@ import (
 
 // dumpState tracks the state of a single dump operation.
 type dumpState struct {
-	w      io.Writer
-	cs     *ConfigState
-	seen   map[uintptr]bool
-	depth  int
-	indent string
+	w        io.Writer
+	cs       *ConfigState
+	seen     map[uintptr]bool
+	depth    int
+	indent   string
+	written  int
+	exceeded bool
 }
 
-// write writes a string to the output.
+// write writes a string to the output. Respects MaxSize.
 func (d *dumpState) write(s string) {
+	if d.exceeded {
+		return
+	}
+	if d.cs.MaxSize > 0 && d.written+len(s) > d.cs.MaxSize {
+		remaining := d.cs.MaxSize - d.written
+		if remaining > 0 {
+			d.w.Write([]byte(s[:remaining]))
+			d.written += remaining
+		}
+		d.w.Write([]byte("\n... <output truncated, MaxSize reached>"))
+		d.exceeded = true
+		return
+	}
 	d.w.Write([]byte(s))
+	d.written += len(s)
 }
 
 // writeIndent writes the current indentation.

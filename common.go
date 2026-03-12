@@ -1,9 +1,11 @@
 package reveal
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
+	"sync"
 )
 
 // pointerTracker tracks visited pointers for circular reference detection.
@@ -94,8 +96,17 @@ func hexPointer(v reflect.Value) string {
 	return "0x" + strconv.FormatUint(uint64(ptr), 16)
 }
 
+// stringerRecursion tracks goroutines currently inside handleMethods
+// to detect Stringer/Error methods that call back into reveal.
+var (
+	stringerMu      sync.Mutex
+	stringerActive  = make(map[uintptr]bool) // key: goroutine-independent value pointer
+)
+
 // handleMethods attempts to invoke error/Stringer interfaces on the value
 // and returns the result string and true if a method was called.
+// It supports RecoverPanics (catches panics in Stringer/Error) and
+// detects Stringer recursion (a Stringer that calls back into reveal).
 func handleMethods(cs *ConfigState, v reflect.Value) (string, bool) {
 	if cs.DisableMethods {
 		return "", false
@@ -105,25 +116,61 @@ func handleMethods(cs *ConfigState, v reflect.Value) (string, bool) {
 		return "", false
 	}
 
-	// If the value is not a pointer, and DisablePointerMethods is false,
-	// try to get an addressable copy to check for pointer receiver methods.
+	// Check for Stringer recursion: if we are already formatting this value's
+	// Stringer, break the cycle.
+	if v.CanAddr() {
+		ptr := v.UnsafeAddr()
+		stringerMu.Lock()
+		if stringerActive[ptr] {
+			stringerMu.Unlock()
+			return "", false
+		}
+		stringerActive[ptr] = true
+		stringerMu.Unlock()
+		defer func() {
+			stringerMu.Lock()
+			delete(stringerActive, ptr)
+			stringerMu.Unlock()
+		}()
+	}
+
+	// Try to call Error/String methods, with optional panic recovery.
+	if result, ok := tryCallMethods(cs, v); ok {
+		return result, true
+	}
+
+	return "", false
+}
+
+// tryCallMethods attempts to invoke error/Stringer on v, recovering from panics if configured.
+func tryCallMethods(cs *ConfigState, v reflect.Value) (result string, ok bool) {
+	if cs.RecoverPanics {
+		defer func() {
+			if r := recover(); r != nil {
+				result = fmt.Sprintf("<panic in method: %v>", r)
+				ok = true
+			}
+		}()
+	}
+
+	// Try pointer receiver methods first.
 	if !cs.DisablePointerMethods && v.CanAddr() {
 		pv := v.Addr()
 		if pv.CanInterface() {
-			if e, ok := pv.Interface().(error); ok {
+			if e, eok := pv.Interface().(error); eok {
 				return e.Error(), true
 			}
-			if s, ok := pv.Interface().(interface{ String() string }); ok {
+			if s, sok := pv.Interface().(interface{ String() string }); sok {
 				return s.String(), true
 			}
 		}
 	}
 
 	if v.CanInterface() {
-		if e, ok := v.Interface().(error); ok {
+		if e, eok := v.Interface().(error); eok {
 			return e.Error(), true
 		}
-		if s, ok := v.Interface().(interface{ String() string }); ok {
+		if s, sok := v.Interface().(interface{ String() string }); sok {
 			return s.String(), true
 		}
 	}

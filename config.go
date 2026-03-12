@@ -37,12 +37,22 @@ type ConfigState struct {
 
 	// SpewKeys causes map keys to be formatted using the Dump format for the key.
 	SpewKeys bool
+
+	// MaxSize is the maximum number of bytes the output may be. 0 means unlimited.
+	// Default: 10485760 (10 MB). Prevents memory exhaustion with deeply nested structures.
+	MaxSize int
+
+	// RecoverPanics causes reveal to recover from panics in Stringer/Error methods
+	// and fall back to raw value dumping. Default: true.
+	RecoverPanics bool
 }
 
 // Config is the active default configuration for reveal.
 // Modify this to change the default behavior of package-level functions.
 var Config = ConfigState{
-	Indent: " ",
+	Indent:        " ",
+	MaxSize:       10 * 1024 * 1024, // 10 MB
+	RecoverPanics: true,
 }
 
 // Dump displays the passed parameters to standard output with type info, pointer addresses,
