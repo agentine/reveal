@@ -96,12 +96,17 @@ func hexPointer(v reflect.Value) string {
 	return "0x" + strconv.FormatUint(uint64(ptr), 16)
 }
 
-// stringerRecursion tracks goroutines currently inside handleMethods
-// to detect Stringer/Error methods that call back into reveal.
+// stringerRecursion tracks active Stringer/Error invocations to detect
+// re-entrant calls (e.g., a Stringer that calls Sdump on itself).
+// For addressable values, we key by pointer address. For non-addressable
+// values, we key by reflect.Type to prevent unbounded type-based recursion.
 var (
-	stringerMu      sync.Mutex
-	stringerActive  = make(map[uintptr]bool) // key: goroutine-independent value pointer
+	stringerMu          sync.Mutex
+	stringerActive      = make(map[uintptr]bool)       // addressable values: keyed by pointer
+	stringerTypeDepth   = make(map[reflect.Type]int)    // non-addressable values: keyed by type
 )
+
+const maxStringerTypeDepth = 1
 
 // handleMethods attempts to invoke error/Stringer interfaces on the value
 // and returns the result string and true if a method was called.
@@ -116,9 +121,9 @@ func handleMethods(cs *ConfigState, v reflect.Value) (string, bool) {
 		return "", false
 	}
 
-	// Check for Stringer recursion: if we are already formatting this value's
-	// Stringer, break the cycle.
+	// Check for Stringer recursion.
 	if v.CanAddr() {
+		// Addressable values: use pointer-based tracking.
 		ptr := v.UnsafeAddr()
 		stringerMu.Lock()
 		if stringerActive[ptr] {
@@ -130,6 +135,25 @@ func handleMethods(cs *ConfigState, v reflect.Value) (string, bool) {
 		defer func() {
 			stringerMu.Lock()
 			delete(stringerActive, ptr)
+			stringerMu.Unlock()
+		}()
+	} else {
+		// Non-addressable values: use type-based depth tracking to prevent
+		// unbounded recursion when a Stringer calls back into reveal.
+		t := v.Type()
+		stringerMu.Lock()
+		if stringerTypeDepth[t] >= maxStringerTypeDepth {
+			stringerMu.Unlock()
+			return "", false
+		}
+		stringerTypeDepth[t]++
+		stringerMu.Unlock()
+		defer func() {
+			stringerMu.Lock()
+			stringerTypeDepth[t]--
+			if stringerTypeDepth[t] == 0 {
+				delete(stringerTypeDepth, t)
+			}
 			stringerMu.Unlock()
 		}()
 	}
