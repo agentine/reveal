@@ -91,7 +91,7 @@ func (c *ConfigState) Sdump(a ...interface{}) string {
 func (c *ConfigState) Fdump(w io.Writer, a ...interface{}) {
 	for i, arg := range a {
 		if i > 0 {
-			w.Write([]byte("\n"))
+			_, _ = w.Write([]byte("\n"))
 		}
 		d := dumpState{
 			w:      w,
@@ -101,6 +101,6 @@ func (c *ConfigState) Fdump(w io.Writer, a ...interface{}) {
 			indent: "",
 		}
 		d.dump(arg)
-		w.Write([]byte("\n"))
+		_, _ = w.Write([]byte("\n"))
 	}
 }

@@ -42,7 +42,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 			indent: "",
 		}
 		d.dump(f.value)
-		io.WriteString(s, buf.String())
+		_, _ = io.WriteString(s, buf.String())
 
 	case 'v':
 		if s.Flag('#') {
@@ -59,7 +59,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 				indent: "",
 			}
 			d.dump(f.value)
-			io.WriteString(s, buf.String())
+			_, _ = io.WriteString(s, buf.String())
 		} else {
 			// Standard value format.
 			fmt.Fprintf(s, "%v", f.value)
@@ -76,7 +76,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 			indent: "",
 		}
 		d.dump(f.value)
-		io.WriteString(s, buf.String())
+		_, _ = io.WriteString(s, buf.String())
 
 	default:
 		// For all other verbs, fall back to fmt default formatting.

@@ -26,14 +26,14 @@ func (d *dumpState) write(s string) {
 	if d.cs.MaxSize > 0 && d.written+len(s) > d.cs.MaxSize {
 		remaining := d.cs.MaxSize - d.written
 		if remaining > 0 {
-			d.w.Write([]byte(s[:remaining]))
+			_, _ = d.w.Write([]byte(s[:remaining]))
 			d.written += remaining
 		}
-		d.w.Write([]byte("\n... <output truncated, MaxSize reached>"))
+		_, _ = d.w.Write([]byte("\n... <output truncated, MaxSize reached>"))
 		d.exceeded = true
 		return
 	}
-	d.w.Write([]byte(s))
+	_, _ = d.w.Write([]byte(s))
 	d.written += len(s)
 }
 
