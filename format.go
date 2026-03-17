@@ -47,7 +47,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('#') {
 			// Go-syntax representation.
-			fmt.Fprintf(s, "%#v", f.value)
+			_, _ = fmt.Fprintf(s, "%#v", f.value)
 		} else if s.Flag('+') {
 			// Verbose with field names — use dump format.
 			var buf bytes.Buffer
@@ -62,7 +62,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 			_, _ = io.WriteString(s, buf.String())
 		} else {
 			// Standard value format.
-			fmt.Fprintf(s, "%v", f.value)
+			_, _ = fmt.Fprintf(s, "%v", f.value)
 		}
 
 	case 's':
@@ -80,7 +80,7 @@ func (f *formatter) Format(s fmt.State, verb rune) {
 
 	default:
 		// For all other verbs, fall back to fmt default formatting.
-		fmt.Fprintf(s, fmt.FormatString(s, verb), f.value)
+		_, _ = fmt.Fprintf(s, fmt.FormatString(s, verb), f.value)
 	}
 }
 

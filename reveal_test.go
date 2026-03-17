@@ -262,7 +262,7 @@ func TestDumpSortKeys(t *testing.T) {
 	if idxA == -1 || idxB == -1 || idxC == -1 {
 		t.Fatalf("expected all keys in output, got: %s", result)
 	}
-	if !(idxA < idxB && idxB < idxC) {
+	if idxA >= idxB || idxB >= idxC {
 		t.Errorf("expected sorted key order a < b < c, got: %s", result)
 	}
 }

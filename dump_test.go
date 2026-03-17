@@ -242,7 +242,7 @@ func TestDumpIntMapKeys(t *testing.T) {
 	if idx1 == -1 || idx2 == -1 || idx3 == -1 {
 		t.Fatalf("expected all keys in output, got: %s", result)
 	}
-	if !(idx1 < idx2 && idx2 < idx3) {
+	if idx1 >= idx2 || idx2 >= idx3 {
 		t.Errorf("expected sorted int keys 1 < 2 < 3, got: %s", result)
 	}
 }
